@@ -107,6 +107,12 @@ class TwigRendererFactory
             : [];
         $this->injectExtensions($environment, $container, $extensions);
 
+        // Add user defined runtime loaders
+        $runtimeLoaders = (isset($config['runtime_loaders']) && is_array($config['runtime_loaders']))
+            ? $config['runtime_loaders']
+            : [];
+        $this->injectRuntimeLoaders($environment, $container, $runtimeLoaders);
+
         // Inject environment
         $twig = new TwigRenderer($environment, isset($config['extension']) ? $config['extension'] : 'html.twig');
 
@@ -150,6 +156,33 @@ class TwigRendererFactory
             }
 
             $environment->addExtension($extension);
+        }
+    }
+
+    /**
+     * Inject Runtime Loaders into the TwigEnvironment instance.
+     *
+     * @param TwigEnvironment $environment
+     * @param ContainerInterface $container
+     * @param array $runtimeLoaders
+     * @throws Exception\InvalidExtensionException
+     */
+    private function injectRuntimeLoaders(TwigEnvironment $environment, ContainerInterface $container, array $runtimeLoaders)
+    {
+        foreach ($runtimeLoaders as $runtimeLoader) {
+            // Load the extension from the container
+            if (is_string($runtimeLoader) && $container->has($runtimeLoader)) {
+                $runtimeLoader = $container->get($runtimeLoader);
+            }
+
+            if (! $runtimeLoader instanceof \Twig_RuntimeLoaderInterface) {
+                throw new Exception\InvalidExtensionException(sprintf(
+                    'Twig runtime loader must be an instance of Twig_RuntimeLoaderInterface; "%s" given,',
+                    is_object($runtimeLoader) ? get_class($runtimeLoader) : gettype($runtimeLoader)
+                ));
+            }
+
+            $environment->addRuntimeLoader($runtimeLoader);
         }
     }
 
